@@ -457,14 +457,27 @@ function App() {
             <div className="input-actions">
               <span>{activeInput.trim().length}자</span>
               <button type="button" onClick={runWorkflow} disabled={loading}>
-                {loading ? '실행 중' : activeTab.buttonLabel}
+                {loading ? (
+                  <>
+                    <span className="spinner" aria-hidden="true" />
+                    실행 중
+                  </>
+                ) : (
+                  activeTab.buttonLabel
+                )}
               </button>
             </div>
             {error ? <p className="error-message">{error}</p> : null}
           </section>
 
           <section className="output-panel">
-            {report ? (
+            {loading ? (
+              <div className="empty-state loading-state" role="status" aria-live="polite">
+                <span className="spinner spinner-lg" aria-hidden="true" />
+                <h2>결과를 불러오는 중입니다</h2>
+                <p>한국 법령 검색 제공자 호출은 몇 초 정도 걸릴 수 있습니다.</p>
+              </div>
+            ) : report ? (
               <ReportView activeTab={activeTab} report={report} />
             ) : (
               <div className="empty-state">
