@@ -36,6 +36,18 @@ interface CitationVerification {
   blocksDefinitiveAnalysis: boolean
 }
 
+interface LlmSynthesis {
+  used: boolean
+  answer?: string
+  citations?: { citedText: string; documentTitle: string | null }[]
+  groundingCheck?: {
+    hallucinationDetected: boolean
+    invalidCitations: string[]
+    uncertainCitations: string[]
+  }
+  notice: string
+}
+
 interface LegalReport {
   allowed: boolean
   reason?: string
@@ -50,6 +62,7 @@ interface LegalReport {
   authoritySearch?: AuthoritySearch
   safetyReview?: SafetyReview
   citationVerification?: CitationVerification
+  llmSynthesis?: LlmSynthesis
   policy?: ReportPolicy
   expertReviewRequired?: boolean
 }
@@ -265,6 +278,28 @@ function ReportView({ activeTab, report }: { activeTab: TabConfig; report: Legal
       ) : null}
 
       {report.browseCatalog ? <KeyValueSection title="직접 선택하기" values={report.browseCatalog} /> : null}
+
+      {report.llmSynthesis ? (
+        <div className={report.llmSynthesis.used ? 'report-section notice-section' : 'report-section'}>
+          <h3>AI 종합 답변 (실험적)</h3>
+          {report.llmSynthesis.used ? (
+            <>
+              <p>{report.llmSynthesis.answer}</p>
+              {report.llmSynthesis.citations?.length ? (
+                <ul>
+                  {report.llmSynthesis.citations.map((citation, index) => (
+                    <li key={index}>
+                      "{citation.citedText}" — {citation.documentTitle ?? '출처 미상'}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </>
+          ) : (
+            <p className="muted">{report.llmSynthesis.notice}</p>
+          )}
+        </div>
+      ) : null}
 
       {report.nextSteps?.length ? (
         <div className="report-section">

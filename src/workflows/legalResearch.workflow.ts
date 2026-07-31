@@ -1,3 +1,4 @@
+import { attemptLlmSynthesis } from "../services/legalAnswerSynthesis.service.js";
 import { legalWorkflowService } from "../services/legalWorkflow.service.js";
 import { mcpLegalService } from "../services/mcpLegal.service.js";
 import {
@@ -42,6 +43,7 @@ export async function legalResearchWorkflow(input: LegalResearchInput): Promise<
     }),
     compliance,
   );
+  const llmSynthesis = await attemptLlmSynthesis(input.question, authoritySearch);
 
   return {
     allowed: true,
@@ -52,6 +54,7 @@ export async function legalResearchWorkflow(input: LegalResearchInput): Promise<
     authoritySearch,
     safetyReview: compliance.safetyReview,
     citationVerification: compliance.citationVerification,
+    llmSynthesis,
     policy,
   };
 }

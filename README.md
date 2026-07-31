@@ -124,6 +124,27 @@ LEGAL_PROVIDER=korean-law korean-law CLI를 child_process로 호출합니다.
 수동 확인 필요
 ```
 
+### LLM 종합 답변 (선택, opt-in)
+
+`법률 질문` 워크플로는 검색된 법령 원문을 근거로 LLM이 답변을 종합하는 기능을 추가로
+제공합니다. 기본값은 비활성화이며, 켜지 않으면 기존 규칙 기반 결과만 표시됩니다.
+
+```bash
+LLM_SYNTHESIS_ENABLED=true
+ANTHROPIC_API_KEY=<Anthropic API 키>
+```
+
+환각 방지를 위해 이중 안전장치를 사용합니다.
+
+1. **Anthropic Citations API** — 검색된 법령 원문을 문서로 전달해, 답변 생성 자체를
+   해당 문서의 특정 구절에 근거하도록 강제합니다.
+2. **`korean-law` CLI의 `verify_citations`** — 생성된 답변에서 인용을 추출해 법제처
+   원문 DB와 직접 재대조합니다. 검증되지 않은 인용이 발견되면 답변 전체를 표시하지
+   않고 규칙 기반 결과로 폴백합니다.
+
+`ANTHROPIC_API_KEY`가 없거나 `LLM_SYNTHESIS_ENABLED`가 꺼져 있으면 항상 안전하게
+비활성 상태로 동작하며, 이유가 응답의 `llmSynthesis.notice`에 명시됩니다.
+
 ## 테스트
 
 백엔드, 서비스, 하네스 평가, 프론트엔드 빌드 검증을 모두 실행합니다.

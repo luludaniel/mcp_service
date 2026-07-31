@@ -76,6 +76,20 @@ export interface BlockedWorkflowOutput {
   readonly policy: LegalWorkflowPolicy;
 }
 
+export interface LlmGroundingCheck {
+  readonly hallucinationDetected: boolean;
+  readonly invalidCitations: readonly string[];
+  readonly uncertainCitations: readonly string[];
+}
+
+export interface LlmSynthesisOutput {
+  readonly used: boolean;
+  readonly answer?: string | undefined;
+  readonly citations?: readonly { readonly citedText: string; readonly documentTitle: string | null }[] | undefined;
+  readonly groundingCheck?: LlmGroundingCheck | undefined;
+  readonly notice: string;
+}
+
 export interface LegalResearchOutput {
   readonly allowed: true;
   readonly workflow: "legal_research";
@@ -89,6 +103,7 @@ export interface LegalResearchOutput {
   readonly authoritySearch: LegalAuthoritySearchOutput;
   readonly safetyReview: WorkflowSafetyReview;
   readonly citationVerification: WorkflowCitationVerification;
+  readonly llmSynthesis?: LlmSynthesisOutput | undefined;
   readonly policy: LegalWorkflowPolicy;
 }
 

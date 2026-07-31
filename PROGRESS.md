@@ -5,6 +5,53 @@
 
 ## 완료
 
+### LLM 종합 답변(opt-in) — Citations API + 이중 인용 검증 ✅ (2026-08-01)
+
+- **배경**: "여전히 형식적인 대답만 나온다"는 지적 — 원인은 파이프라인에 LLM이 아예
+  없고 검색(retrieval)만 있었기 때문. 사용자가 "LLM + 법률 MCP를 함께 연결해
+  환각을 최소화한 사이트"를 만들고 싶다고 해서 설계를 시작.
+- **도구 선정 재검토**: 처음 설계했던 "LLM이 인용 배열을 반환하면 코드로 직접
+  대조"하는 방식을 사용자 요청으로 재검토. 조사 결과 더 나은 기성 대안 두 가지를
+  발견해 채택:
+  1. **Anthropic Citations API** — 검색된 법령 원문을 `document` 콘텐츠 블록으로
+     전달하고 `citations: {enabled: true}`를 켜면, 생성 단계 자체가 제공 문서의
+     특정 구절에 강제로 묶임(1차 방어선). 구조화 출력과는 함께 못 쓴다는 점 확인.
+  2. **`korean-law` CLI의 `verify_citations` 도구** — 몰랐던 기성 도구. 텍스트에서
+     조문 인용을 자동 추출해 법제처 원문 DB와 직접 대조. 라이브 테스트로 실제
+     환각(지어낸 조문 2개)을 정확히 잡아내는 것을 확인(exit code 1,
+     `[HALLUCINATION_DETECTED]` 마커). 직접 만들려던 배열 대조 로직보다 우월 —
+     우리가 사전에 검색했는지와 무관하게 원천 DB로 검증.
+  - 두 API 모두 공식 문서(Claude API skill, 실제 CLI `--help`)로 스키마를
+    검증 후 구현 — 추측 없이 진행.
+- **구현**:
+  - `src/services/legalCitationSynthesis.service.ts` — Citations API 호출,
+    `authoritySearch`의 법령 조문(본문 있는 것만)을 문서로 변환. 판례는 검색
+    단계에서 제목만 있고 전문이 없어 이번 버전에서는 제외(추후 확장 여지로 기록).
+  - `src/services/citationGroundingVerifier.service.ts` — `verify_citations` CLI
+    래퍼. 실제 CLI 출력 3종(HALLUCINATION_DETECTED/PARTIAL_VERIFIED/VERIFIED)을
+    fixture로 고정해 파서를 회귀 테스트.
+  - `src/services/legalAnswerSynthesis.service.ts` — 위 둘을 조합하는 오케스트레이션.
+    2차 검증에서 환각이 감지되면 답변 전체를 폐기(문장 일부만 제거하면 문맥이
+    깨질 수 있어, 프로젝트의 기존 원칙대로 애매하면 확실한 실패로 표시).
+  - `LLM_SYNTHESIS_ENABLED` 환경변수로 opt-in — 꺼져 있거나 `ANTHROPIC_API_KEY`가
+    없으면 항상 안전하게 `used: false`로 폴백, 기존 규칙 기반 결과는 그대로 유지.
+  - 파일럿으로 `legalResearch.workflow.ts`에만 연결(다른 워크플로는 확장 후보로 남김).
+  - 프론트엔드에 "AI 종합 답변 (실험적)" 섹션 추가 — 비활성 상태에서는 왜
+    비활성인지 문구로 안내.
+- **제약**: `ANTHROPIC_API_KEY`가 아직 없어 실제 LLM 호출은 라이브 검증하지
+  못함(사용자 요청에 따라 "키 없이 코드 구조만 먼저" 진행). 대신:
+  - Citations API 요청 스키마는 Anthropic 공식 문서로 정확히 검증.
+  - `verify_citations`는 `LAW_OC`만 있으면 되므로 실제 CLI로 라이브 검증 완료.
+  - 비활성 상태(기본값)에서 전체 워크플로가 회귀 없이 동작하는 것은 브라우저로 확인.
+- **검증**: vitest 신규 14개(`citationGroundingVerifier` 5개, `legalCitationSynthesis`
+  6개, `legalAnswerSynthesis` 3개) — 소송 준비 기능 완료 시점 80개에서 총 94개로
+  증가. 백엔드/프론트엔드 빌드 통과, 브라우저로 "AI 종합 답변" 섹션과 안내 문구
+  실제 확인.
+- **다음 단계 후보(미착수)**: 실제 API 키로 라이브 종단 검증, 판례 전문
+  조회(`get_precedent_text`) 후 판례도 Citations 문서로 포함, 다른 워크플로
+  (계약서 검토·문서 초안·소송 준비)로 확장, `verify_citations`의 "확인필요(⚠)"
+  상태가 자연스러운 한국어 문장에서 자주 발생하는 파싱 한계를 완화할지 검토.
+
 ### 소송 준비 체크리스트 기능 신규 개발 ✅ (2026-07-31)
 
 - **배경**: "승소를 전제로 진행하는 방향 말고, 어떤 정보를 얻고 어떤 서류들을 준비해야 하는

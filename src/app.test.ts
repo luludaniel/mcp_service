@@ -99,6 +99,7 @@ describe("legal MCP harness API", () => {
       mockResult: { issue: string; likelySources: string[] };
       authoritySearch: { provider: string; manualReviewRequired: boolean };
       citationVerification: { limitations: string[]; blocksDefinitiveAnalysis: boolean };
+      llmSynthesis?: { used: boolean; notice: string };
       policy: { informationalOnly: boolean; requiresExpertReview: boolean; prohibitsGuaranteedOutcome: boolean };
     };
 
@@ -114,6 +115,10 @@ describe("legal MCP harness API", () => {
     expect(body.policy.informationalOnly).toBe(true);
     expect(body.policy.requiresExpertReview).toBe(true);
     expect(body.policy.prohibitsGuaranteedOutcome).toBe(true);
+    // ANTHROPIC_API_KEY/LLM_SYNTHESIS_ENABLED가 설정되지 않은 테스트 환경에서는
+    // LLM 종합 답변이 항상 안전하게 비활성화 상태로 폴백해야 합니다.
+    expect(body.llmSynthesis?.used).toBe(false);
+    expect(body.llmSynthesis?.notice).toBeTruthy();
   });
 
   it("validates contract review input with zod", async () => {
