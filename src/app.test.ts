@@ -184,6 +184,84 @@ describe("legal MCP harness API", () => {
     expect(body.policy.draftOnly).toBe(true);
   });
 
+  it("returns the litigation prep catalog", async () => {
+    const response = await fetch(`${baseUrl}/api/litigation-prep/catalog`);
+    const body = (await response.json()) as { catalog: Record<string, string> };
+
+    expect(response.status).toBe(200);
+    expect(Object.keys(body.catalog)).toEqual(["민사", "형사", "가정법원"]);
+    expect(body.catalog["민사"]).toContain("대금/용역비 미지급");
+  });
+
+  it("validates litigation prep input with zod", async () => {
+    const response = await fetch(`${baseUrl}/api/litigation-prep`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const body = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("invalid_request");
+  });
+
+  it("classifies a matched case type and returns a checklist", async () => {
+    const response = await fetch(`${baseUrl}/api/litigation-prep`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ situation: "프리랜서로 일했는데 용역대금을 못 받았어요." }),
+    });
+    const body = (await response.json()) as {
+      allowed: boolean;
+      classificationScope: Record<string, string>;
+      mockResult: { requiredEvidence: string[]; requiredDocuments: string[] };
+      browseCatalog?: Record<string, string>;
+      policy: { requiresExpertReview: boolean };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.allowed).toBe(true);
+    expect(body.classificationScope["분야"]).toBe("민사");
+    expect(body.classificationScope["사건 유형"]).toBe("대금/용역비 미지급");
+    expect(body.mockResult.requiredEvidence.length).toBeGreaterThan(0);
+    expect(body.mockResult.requiredDocuments.length).toBeGreaterThan(0);
+    expect(body.browseCatalog).toBeUndefined();
+    expect(body.policy.requiresExpertReview).toBe(true);
+  });
+
+  it("returns the full catalog to browse when the situation is unclear", async () => {
+    const response = await fetch(`${baseUrl}/api/litigation-prep`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ situation: "오늘 날씨가 좋네요." }),
+    });
+    const body = (await response.json()) as {
+      allowed: boolean;
+      classificationScope: Record<string, string>;
+      mockResult?: unknown;
+      browseCatalog: Record<string, string>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.allowed).toBe(true);
+    expect(body.classificationScope["분야"]).toBe("판단 어려움");
+    expect(body.mockResult).toBeUndefined();
+    expect(Object.keys(body.browseCatalog)).toEqual(["민사", "형사", "가정법원"]);
+  });
+
+  it("blocks education context in litigation prep too", async () => {
+    const response = await fetch(`${baseUrl}/api/litigation-prep`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ situation: "수업 과제로 형사소송법 판례를 조사해줘." }),
+    });
+    const body = (await response.json()) as { allowed: boolean; reason: string };
+
+    expect(response.status).toBe(422);
+    expect(body.allowed).toBe(false);
+    expect(body.reason).toBe("excluded_education_context");
+  });
+
   it("blocks Korean education context in new workflow endpoints", async () => {
     const response = await fetch(`${baseUrl}/api/legal-research`, {
       method: "POST",

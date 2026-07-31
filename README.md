@@ -9,10 +9,11 @@
 ## 주요 기능
 
 - Express 백엔드 API와 Zod 입력 검증
-- React 최소 기능 UI 3개 화면
+- React 최소 기능 UI 4개 화면
   - 법률 질문
   - 계약서 검토
   - 문서 초안
+  - 소송 준비 (형사/민사/가정법원 체크리스트, 키워드 기반 분야 자동 안내)
 - 개발용 규칙 기반 모의 워크플로
 - 법령 검색 제공자 계층
   - `mock`
@@ -54,6 +55,8 @@ GET  /health
 POST /api/legal-research
 POST /api/contract-review
 POST /api/document-draft
+GET  /api/litigation-prep/catalog
+POST /api/litigation-prep
 ```
 
 요청 예시:
@@ -63,6 +66,20 @@ curl -X POST http://localhost:3000/api/legal-research \
   -H "Content-Type: application/json" \
   -d '{"question":"프리랜서 용역대금을 지급받지 못한 경우 검토할 수 있는 민사 조치를 알려주세요."}'
 ```
+
+`소송 준비` — 형사/민사/가정법원 사건 유형별 준비 체크리스트를 규칙 기반(LLM 미사용)으로 제공합니다.
+입력 문장의 키워드로 사건 유형을 먼저, 그다음 분야만이라도 매칭을 시도하고, 매칭되지 않으면 추측하지
+않고 전체 카탈로그를 보여줘 사용자가 직접 고를 수 있게 합니다.
+
+```bash
+curl -X POST http://localhost:3000/api/litigation-prep \
+  -H "Content-Type: application/json" \
+  -d '{"situation":"프리랜서로 일했는데 3개월째 용역대금을 못 받았어요."}'
+```
+
+콘텐츠는 `src/services/litigationChecklistCatalog.service.ts`에 큐레이션되어 있으며, 현재는 분야당
+1개(대금/용역비 미지급, 고소장 제출 준비, 이혼 소송 준비)로 시작해 확장 가능한 구조입니다. "승소 예측"이
+아닌 "정보 수집·서류 준비 안내"에 한정되도록 설계했습니다.
 
 ## 프론트엔드 실행
 

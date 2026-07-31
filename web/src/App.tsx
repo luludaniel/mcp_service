@@ -1,7 +1,7 @@
 import { useMemo, useState, type ChangeEvent } from 'react'
 import './App.css'
 
-type TabId = 'legal-research' | 'contract-review' | 'document-draft'
+type TabId = 'legal-research' | 'contract-review' | 'document-draft' | 'litigation-prep'
 
 interface ReportPolicy {
   informationalOnly: boolean
@@ -44,6 +44,8 @@ interface LegalReport {
   nextSteps?: string[]
   reviewScope?: Record<string, string>
   draftScope?: Record<string, string>
+  classificationScope?: Record<string, string>
+  browseCatalog?: Record<string, string>
   mockResult?: Record<string, unknown>
   authoritySearch?: AuthoritySearch
   safetyReview?: SafetyReview
@@ -87,6 +89,10 @@ const fieldLabels: Record<string, string> = {
   documentType: '문서 유형',
   recipient: '수신인',
   requestedOutcome: '요청 결과',
+  requiredEvidence: '확보해야 할 증거',
+  requiredDocuments: '준비할 서류',
+  deadlinesAndLimitations: '기한/시효',
+  jurisdictionNotes: '관할 안내',
 }
 
 const tabs = [
@@ -131,6 +137,14 @@ const tabs = [
       ...(extra.recipient?.trim() ? { recipient: extra.recipient.trim() } : {}),
       requestedOutcome: extra.requestedOutcome?.trim() || '초안 작성',
     }),
+  },
+  {
+    id: 'litigation-prep',
+    label: '소송 준비',
+    endpoint: '/api/litigation-prep',
+    placeholder: '지금 겪고 있는 상황을 설명해 주세요. 예: 프리랜서로 일했는데 용역대금을 못 받았어요. / 형사/민사/가정법원 중 어디에 해당하는지 몰라도 괜찮습니다.',
+    buttonLabel: '준비 안내 받기',
+    buildBody: (text: string) => ({ situation: text }),
   },
 ] satisfies [TabConfig, ...TabConfig[]]
 
@@ -220,7 +234,9 @@ function ReportView({ activeTab, report }: { activeTab: TabConfig; report: Legal
           <p className="eyebrow">{activeTab.label} 리포트</p>
           <h2>{isDraft ? '초안 리포트' : '정보 제공 리포트'}</h2>
         </div>
-        <span className="status-pill">{formatProvider(report.authoritySearch?.provider)} 제공자</span>
+        {report.authoritySearch ? (
+          <span className="status-pill">{formatProvider(report.authoritySearch.provider)} 제공자</span>
+        ) : null}
       </div>
 
       <ExpertBadge report={report} />
@@ -232,6 +248,7 @@ function ReportView({ activeTab, report }: { activeTab: TabConfig; report: Legal
 
       {report.reviewScope ? <KeyValueSection title="검토 범위" values={report.reviewScope} /> : null}
       {report.draftScope ? <KeyValueSection title="초안 범위" values={report.draftScope} /> : null}
+      {report.classificationScope ? <KeyValueSection title="분류 결과" values={report.classificationScope} /> : null}
 
       {report.mockResult ? (
         <div className="report-section">
@@ -246,6 +263,8 @@ function ReportView({ activeTab, report }: { activeTab: TabConfig; report: Legal
           </div>
         </div>
       ) : null}
+
+      {report.browseCatalog ? <KeyValueSection title="직접 선택하기" values={report.browseCatalog} /> : null}
 
       {report.nextSteps?.length ? (
         <div className="report-section">
@@ -338,11 +357,13 @@ function App() {
     'legal-research': '',
     'contract-review': '',
     'document-draft': '',
+    'litigation-prep': '',
   })
   const [extraInputs, setExtraInputs] = useState<Record<TabId, Record<string, string>>>({
     'legal-research': {},
     'contract-review': {},
     'document-draft': {},
+    'litigation-prep': {},
   })
   const [report, setReport] = useState<LegalReport | null>(null)
   const [loading, setLoading] = useState(false)

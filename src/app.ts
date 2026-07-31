@@ -2,12 +2,14 @@ import cors from "cors";
 import express, { type Request, type Response } from "express";
 import { z } from "zod";
 
+import { buildCatalogIndex } from "./services/litigationChecklistCatalog.service.js";
 import { LEGAL_SERVICE_HARNESS, getWorkflow, isExcludedContext } from "./harness.js";
 import type { CapabilityId } from "./types.js";
 import {
   contractReviewWorkflow,
   documentDraftWorkflow,
   legalResearchWorkflow,
+  litigationPrepWorkflow,
 } from "./workflows/index.js";
 
 const capabilitySchema = z.enum(["legal_research", "contract_review", "document_drafting"]);
@@ -34,6 +36,11 @@ const documentDraftRequestSchema = z.object({
   facts: z.string().min(1),
   recipient: z.string().min(1).optional(),
   requestedOutcome: z.string().min(1).optional(),
+});
+
+const litigationPrepRequestSchema = z.object({
+  situation: z.string().min(1),
+  domain: z.enum(["criminal", "civil", "family"]).optional(),
 });
 
 function inferCapability(prompt: string): CapabilityId {
@@ -180,6 +187,24 @@ export function createApp() {
     }
 
     const result = await documentDraftWorkflow(parsed.data);
+    response.status(result.allowed ? 200 : 422).json(result);
+  });
+
+  app.get("/api/litigation-prep/catalog", (_request: Request, response: Response) => {
+    response.json({ catalog: buildCatalogIndex() });
+  });
+
+  app.post("/api/litigation-prep", async (request: Request, response: Response) => {
+    const parsed = litigationPrepRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      response.status(400).json({
+        error: "invalid_request",
+        details: parsed.error.flatten(),
+      });
+      return;
+    }
+
+    const result = await litigationPrepWorkflow(parsed.data);
     response.status(result.allowed ? 200 : 422).json(result);
   });
 

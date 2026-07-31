@@ -72,6 +72,8 @@ export interface McpLegalService extends LegalSearchProvider {
   researchLegalAuthorities(request: LegalResearchInput): Promise<LegalAuthoritySearchResult>;
   reviewContractAuthorities(request: ContractReviewInput): Promise<LegalAuthoritySearchResult>;
   draftDocumentAuthorities(request: DocumentDraftInput): Promise<LegalAuthoritySearchResult>;
+  /** 정해진 입력 타입이 없는 워크플로(예: 소송준비 체크리스트)를 위한 범용 조회입니다. */
+  researchGeneralAuthorities(query: string): Promise<LegalAuthoritySearchResult>;
 }
 
 function getConfiguredProvider(): LegalProvider {
@@ -459,6 +461,12 @@ export function createMcpLegalService(provider: LegalProvider = getConfiguredPro
       const { lawSearch } = await searchProvider.researchAuthorities(query);
 
       return mergeAuthorityResults(provider, { lawSearch });
+    },
+
+    async researchGeneralAuthorities(query: string): Promise<LegalAuthoritySearchResult> {
+      const { lawSearch, precedentSearch } = await searchProvider.researchAuthorities(query);
+
+      return mergeAuthorityResults(provider, { lawSearch, precedentSearch });
     },
   };
 }

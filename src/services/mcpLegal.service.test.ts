@@ -51,6 +51,17 @@ describe("mcpLegalService providers", () => {
     }
   });
 
+  it("returns merged authorities from researchGeneralAuthorities for arbitrary queries", async () => {
+    const service = createMcpLegalService("mock");
+
+    const result = await service.researchGeneralAuthorities("대금/용역비 미지급");
+
+    expect(result.provider).toBe("mock");
+    expect(result.lawSearch?.ok).toBe(true);
+    expect(result.precedentSearch?.ok).toBe(true);
+    expect(result.manualReviewRequired).toBe(true);
+  });
+
   it("returns non-throwing failure metadata from korean-law provider when LAW_OC is missing", async () => {
     const originalLawOc = process.env.LAW_OC;
     delete process.env.LAW_OC;
