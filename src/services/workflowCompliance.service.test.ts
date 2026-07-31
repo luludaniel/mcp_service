@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createComplianceResult } from "./workflowCompliance.service.js";
+import { createComplianceResult, describeAuthoritySource } from "./workflowCompliance.service.js";
 import type { LegalAuthoritySearchOutput } from "../types/workflow.types.js";
 
 const baseAuthoritySearch: LegalAuthoritySearchOutput = {
@@ -65,5 +65,19 @@ describe("workflowComplianceService", () => {
     expect(result.citationVerification.limitations).toContain("출처 확인 필요");
     expect(result.citationVerification.blocksDefinitiveAnalysis).toBe(true);
     expect(result.warnings).toContain("출처 확인 필요");
+  });
+});
+
+describe("describeAuthoritySource", () => {
+  it("describes the mock provider as a mock source, not a generic dev placeholder", () => {
+    expect(describeAuthoritySource("mock")).toContain("모의");
+  });
+
+  it("describes the korean-law provider as a real search source, not mock wording", () => {
+    const description = describeAuthoritySource("korean-law");
+
+    expect(description).toContain("한국 법령");
+    expect(description).not.toContain("모의");
+    expect(description).not.toContain("개발용");
   });
 });

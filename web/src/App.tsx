@@ -52,13 +52,22 @@ interface LegalReport {
   expertReviewRequired?: boolean
 }
 
+interface ExtraField {
+  key: string
+  label: string
+  placeholder: string
+  required: boolean
+  fallback?: string
+}
+
 interface TabConfig {
   id: TabId
   label: string
   endpoint: string
   placeholder: string
   buttonLabel: string
-  buildBody: (text: string) => Record<string, string>
+  extraFields?: ExtraField[]
+  buildBody: (text: string, extra: Record<string, string>) => Record<string, string>
 }
 
 const API_BASE = 'http://localhost:3000'
@@ -95,10 +104,14 @@ const tabs = [
     endpoint: '/api/contract-review',
     placeholder: '검토할 계약 조항이나 계약서 본문을 붙여넣으세요. 예: 공급자가 언제든 해지할 수 있고 고객은 남은 대금을 모두 부담한다는 조항',
     buttonLabel: '계약서 검토 실행',
-    buildBody: (text: string) => ({
+    extraFields: [
+      { key: 'partyRole', label: '당사자 지위', placeholder: '예: 을, 공급자, 임차인', required: true, fallback: '검토 요청자' },
+      { key: 'concern', label: '검토 관심사항 (선택)', placeholder: '예: 일방적 해지 조항', required: false },
+    ],
+    buildBody: (text: string, extra: Record<string, string>) => ({
       contractText: text,
-      partyRole: '검토 요청자',
-      concern: '일반 위험 검토',
+      partyRole: extra.partyRole?.trim() || '검토 요청자',
+      ...(extra.concern?.trim() ? { concern: extra.concern.trim() } : {}),
     }),
   },
   {
@@ -107,10 +120,16 @@ const tabs = [
     endpoint: '/api/document-draft',
     placeholder: '작성할 문서의 목적과 사실관계를 입력하세요. 예: 미지급 용역대금 지급을 요청하는 내용증명 초안',
     buttonLabel: '문서 초안 생성',
-    buildBody: (text: string) => ({
-      documentType: '법률 문서 초안',
+    extraFields: [
+      { key: 'documentType', label: '문서 유형', placeholder: '예: 내용증명, 합의서 초안', required: true, fallback: '법률 문서 초안' },
+      { key: 'recipient', label: '수신인 (선택)', placeholder: '예: 계약 상대방', required: false },
+      { key: 'requestedOutcome', label: '요청 결과 (선택)', placeholder: '예: 대금 지급', required: false },
+    ],
+    buildBody: (text: string, extra: Record<string, string>) => ({
+      documentType: extra.documentType?.trim() || '법률 문서 초안',
       facts: text,
-      requestedOutcome: '초안 작성',
+      ...(extra.recipient?.trim() ? { recipient: extra.recipient.trim() } : {}),
+      requestedOutcome: extra.requestedOutcome?.trim() || '초안 작성',
     }),
   },
 ] satisfies [TabConfig, ...TabConfig[]]
@@ -320,6 +339,11 @@ function App() {
     'contract-review': '',
     'document-draft': '',
   })
+  const [extraInputs, setExtraInputs] = useState<Record<TabId, Record<string, string>>>({
+    'legal-research': {},
+    'contract-review': {},
+    'document-draft': {},
+  })
   const [report, setReport] = useState<LegalReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -345,7 +369,7 @@ function App() {
       const response = await fetch(`${API_BASE}${activeTab.endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(activeTab.buildBody(text)),
+        body: JSON.stringify(activeTab.buildBody(text, extraInputs[activeTab.id])),
       })
       const data = (await response.json()) as LegalReport
 
@@ -396,6 +420,29 @@ function App() {
         <div className="work-grid">
           <section className="input-panel">
             <label htmlFor="workflow-input">{activeTab.label}</label>
+            {activeTab.extraFields?.length ? (
+              <div className="extra-fields">
+                {activeTab.extraFields.map((field: ExtraField) => (
+                  <label key={field.key} className="extra-field">
+                    <span>{field.label}</span>
+                    <input
+                      type="text"
+                      value={extraInputs[activeTab.id]?.[field.key] ?? ''}
+                      placeholder={field.placeholder}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setExtraInputs((current: Record<TabId, Record<string, string>>) => ({
+                          ...current,
+                          [activeTab.id]: {
+                            ...current[activeTab.id],
+                            [field.key]: event.target.value,
+                          },
+                        }))
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+            ) : null}
             <textarea
               id="workflow-input"
               value={activeInput}

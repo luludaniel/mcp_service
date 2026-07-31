@@ -24,6 +24,13 @@ function unique(values: readonly string[]): readonly string[] {
   return Array.from(new Set(values));
 }
 
+/** 요약 문구가 provider와 무관하게 항상 "개발용" 문구로 고정되지 않도록 실제 출처를 반영합니다. */
+export function describeAuthoritySource(provider: LegalAuthoritySearchOutput["provider"]): string {
+  return provider === "korean-law"
+    ? "한국 법령 검색 제공자의 검색 결과를 기준으로"
+    : "개발용 모의 검색 결과를 기준으로";
+}
+
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>

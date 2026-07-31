@@ -72,6 +72,23 @@
 - **검증**: vitest 12개 신규 테스트, 전체 47 → 59개 통과. 상세 내용은
   `USER_TESTING.md`의 "이슈 #1" 항목 참고.
 
+### 이슈 #2, #3 조치 ✅ (2026-07-31, 같은 날 처리)
+
+- **이슈 #2(요약 mock 문구 고정)**: `workflowCompliance.service.ts`에
+  `describeAuthoritySource(provider)` 헬퍼 추가 — `legalResearch.workflow.ts`,
+  `contractReview.workflow.ts`의 `summary`가 실제 provider("한국 법령 검색 제공자" vs
+  "개발용 모의 검색 결과")를 반영하도록 수정. `documentDraft.workflow.ts`는 원래 mock
+  문구가 없어 대상 아님. "한계" 카드(`mockResult.limitations`)의 "개발용 모의 검색" 문구는
+  별개 필드(항상 규칙 기반인 `mockResult`에 대한 정확한 설명)라 버그가 아니라고 판단해
+  손대지 않음.
+- **이슈 #3(UI 세부 입력 필드 누락)**: `web/src/App.tsx`에 `extraFields` 개념을 추가해
+  "계약서 검토" 탭에 당사자 지위/검토 관심사항, "문서 초안" 탭에 문서 유형/수신인/요청 결과
+  입력창을 신설. 비워두면 기존과 동일한 기본값이 전송되어 회귀 없음.
+- **검증**: 백엔드/프론트엔드 `npm run build` 통과, vitest 59 → 61개 통과. 브라우저로
+  "당사자 지위: 을", "문서 유형: 내용증명" 등이 실제로 리포트에 반영되는 것을 라이브 확인.
+  TC-2/TC-4/TC-5/TC-6 재검증으로 회귀 없음 확인. 상세 내용은 `USER_TESTING.md`의
+  "이슈 #2", "이슈 #3" 항목 참고.
+
 ## 다음 순위 (미착수)
 
 ### 2순위 — YAML 평가 러너 연결
