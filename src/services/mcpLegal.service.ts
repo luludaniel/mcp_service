@@ -14,6 +14,11 @@ import {
   parseResearchChainText,
   redactApiKey,
 } from "./koreanLawParser.service.js";
+import {
+  extractSearchKeywords,
+  filterByRelevance,
+  tokenizeKoreanQuery,
+} from "./koreanQueryKeywords.service.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -263,7 +268,11 @@ class KoreanLawCliProvider implements LegalSearchProvider {
   }
 
   async researchAuthorities(question: string): Promise<AuthorityLookupPair> {
-    const lookup = await this.run("researchQuestion", ["query", question, "--json"], (stdout) => {
+    // 자연어 문장을 그대로 CLI에 넘기면 패턴 매칭에 잘 안 걸리므로 핵심 키워드로 정제합니다.
+    const keywords = extractSearchKeywords(question);
+    const queryTokens = tokenizeKoreanQuery(question);
+
+    const lookup = await this.run("researchQuestion", ["query", keywords, "--json"], (stdout) => {
       const envelope = asQueryEnvelope(parseJson(stdout));
       if (!envelope || envelope.isError === true) {
         return cliEmpty("researchQuestion", redactApiKey(stdout));
@@ -273,7 +282,7 @@ class KoreanLawCliProvider implements LegalSearchProvider {
       const article = parseArticleText(envelope.pipelineResult ?? "");
 
       // 질문이 특정 조문을 지목하면 파이프라인이 그 조문 전문을 함께 돌려줍니다.
-      const lawArticles = article?.articleNo && article.lawName
+      const candidateLawArticles = article?.articleNo && article.lawName
         ? [
             {
               lawName: article.lawName,
@@ -286,16 +295,27 @@ class KoreanLawCliProvider implements LegalSearchProvider {
           ]
         : chain.lawArticles;
 
-      if (lawArticles.length === 0 && chain.precedents.length === 0) {
+      // 키워드 정제만으로는 CLI의 "AI 법령검색" 폴백이 반환하는 무관한 결과를 막지 못함을
+      // 라이브 검증으로 확인했습니다. 질문과 겹치는 단어가 전혀 없는 결과는 걸러냅니다.
+      const lawFilter = filterByRelevance(
+        queryTokens,
+        candidateLawArticles,
+        (a) => `${a.lawName} ${a.title ?? ""} ${a.text ?? ""}`,
+      );
+      const precedentFilter = filterByRelevance(queryTokens, chain.precedents, (p) => p.title);
+      const relevanceFilteredCount = lawFilter.droppedCount + precedentFilter.droppedCount;
+
+      if (lawFilter.kept.length === 0 && precedentFilter.kept.length === 0) {
         return cliEmpty("researchQuestion", redactApiKey(envelope.result ?? stdout));
       }
 
       return cliSuccess("researchQuestion", {
         question,
         routedTool: envelope.route?.tool,
-        lawArticles,
-        precedents: chain.precedents,
+        lawArticles: lawFilter.kept,
+        precedents: precedentFilter.kept,
         failedSections: chain.failedSections,
+        relevanceFilteredCount,
       });
     });
 
@@ -354,6 +374,7 @@ function splitResearchLookup(lookup: LegalLookupResult): AuthorityLookupPair {
     readonly lawArticles?: readonly unknown[];
     readonly precedents?: readonly unknown[];
     readonly failedSections?: readonly string[];
+    readonly relevanceFilteredCount?: number;
   } | null;
 
   const lawArticles = data?.lawArticles ?? [];
@@ -361,6 +382,9 @@ function splitResearchLookup(lookup: LegalLookupResult): AuthorityLookupPair {
   const failureNotices = (data?.failedSections ?? []).map(
     (section) => `${section} 조회 실패, 수동 확인 필요`,
   );
+  if (data?.relevanceFilteredCount) {
+    failureNotices.push("질문과 관련성이 낮은 결과 일부를 제외했습니다.");
+  }
 
   const toResult = (
     operation: LegalLookupOperation,
