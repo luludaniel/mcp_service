@@ -5,6 +5,78 @@
 
 ## 완료
 
+### codex_harness를 Claude Code CLI와 겸용 가능하게 확장 ✅ (2026-08-01)
+
+- **배경**: 앞으로 Claude Code로 작업하기로 하면서, Codex CLI 전용으로 만들어뒀던
+  `codex_harness/`(역할 기반 멀티 에이전트 하네스)를 계속 쓸 수 있는지 질문받음.
+  삭제할지, 교차 사용 가능하게 만들지 결정이 필요했음.
+- **조사**: `.agents/roles/*.md`, `.agents/workflows/*.md`, `project-checklist.md`,
+  `scripts/{test,review}.sh`를 전부 확인한 결과 특정 CLI에 종속된 부분은
+  `scripts/agent-runner.mjs`의 `spawnSync("codex", ["exec", ...])` 호출 하나뿐
+  이었음 — 나머지는 순수 마크다운 프롬프트/셸 스크립트라 그대로 재사용 가능.
+- **조치**: `agent-runner.mjs`가 `claude`/`codex` CLI를 자동 감지(`claude` 우선)
+  하거나 `--tool`로 명시 지정하도록 수정. Codex의 `--sandbox
+  read-only|workspace-write`를 Claude의 `--permission-mode`로 매핑
+  (read-only 역할 → `plan`, 나머지 → `bypassPermissions`) — 다만 이 둘은 격리
+  수준이 다른 별개 메커니즘이라는 점을 README에 명시. README/AGENTS.template.md/
+  USAGE.md 갱신, 이미 Claude Code+OMC 세션 안에서는 이 스크립트 대신 `Agent`
+  도구나 `/team`을 바로 쓸 수 있다는 점도 안내.
+- **부수 정리**: `codex_harness/reports/current-project-review.md`(2026-06-12자,
+  25개 테스트 시절 스냅샷 — 지금은 102개)는 이미 outdated된 실행 결과 리포트라
+  복원하지 않고 정식 삭제. `.gitignore`의 `.omc/`가 빠져있어(이번에 처음
+  `.omx/`를 오타로 오인해 지웠다가, 실제로는 2026-05-31자 세션 로그가 있는 별도
+  디렉토리임을 확인하고 되돌림) `.omx/`와 `.omc/` 둘 다 무시하도록 수정.
+- **검증**: `node --check`로 문법 확인, `--tool bogus`/미지원 workflow 인자
+  검증 경로를 직접 실행해 에러 처리 확인. 실제 `claude`/`codex` 서브프로세스를
+  띄우는 라이브 역할 실행은 이번 세션에서 검증하지 않음 — 다음 사용 시 라이브
+  확인 권장(`USAGE.md`에 기록). `npm test` 전체 재실행 — 14개 파일, 102 passed +
+  1 skipped, 프론트엔드 빌드 통과(회귀 없음).
+
+### legal-harness/outputs 샘플 산출물 6개 작성 ✅ (2026-08-01)
+
+- **범위**: "사용자 결정 사항 #5" 결정(정적 예시만, 백엔드 파일 저장 기능 없음)에 따라
+  `legal-harness/outputs/{reports,checklists,drafts}`를 채움.
+- **방법**: 내용을 손으로 지어내지 않고, `legalResearchWorkflow`/`contractReviewWorkflow`/
+  `documentDraftWorkflow` 함수를 실제로 직접 호출해(README 예시와 동일한 입력 —
+  프리랜서 용역대금 미지급 질문, 일방적 해지 계약 조항, 지급 요청서 초안 요청)
+  캡처한 진짜 JSON 응답을 그대로 저장. 각 JSON 파일에 `_meta` 필드로 어떤 요청에서
+  나왔는지, 손으로 쓴 게 아니라는 점을 명시.
+  - `outputs/reports/{legal-research,contract-review}-report-example.json` — 워크플로
+    응답 원본.
+  - `outputs/checklists/{legal-research,contract-review,document-draft}-checklist-example.md`
+    — 각 응답의 `nextSteps`/`policy.warnings`를 사람이 읽는 체크리스트로 재구성.
+  - `outputs/drafts/document-draft-example.md` — `mockResult.sections`/`placeholders`를
+    실제 문서 형태로 채움. 확인 안 된 정보(정확한 금액, 작성일, 첨부자료)는 이
+    제품의 기존 원칙대로 지어내지 않고 대괄호 자리표시자로 남김, 상단에 초안 전용
+    경고 명시.
+- **검증**: JSON 파일 `JSON.parse` 유효성 확인, `npm test` 재실행 — 14개 파일, 102
+  passed + 1 skipped, 프론트엔드 빌드 통과(문서 파일만 추가라 회귀 없음).
+- **상태**: `todolist.md`의 초기 구상 산출물 구조(`legal-harness/{prompts,evals,outputs}`)
+  전 항목이 이제 채워졌습니다.
+
+### todolist.md 사용자 결정 사항 5가지 확정 + prompt 파일 4개 작성 ✅ (2026-08-01)
+
+- **결정**: agent는 TypeScript로(새 런타임 도입 안 함), `document_reader_mcp`는 붙여넣은
+  텍스트부터(PDF/DOCX는 별도 작업으로 보류), `school_policy_review.prompt`는 만들지
+  않고 `education_context_exclusion.prompt`로 대체, sample output은 정적 예시만(백엔드
+  파일 저장 기능 추가 안 함). 상세 근거는 `todolist.md`의 각 섹션과 "사용자 결정
+  사항" 목록에 기록.
+- **구현**: `legal-harness/prompts/`에 4개 파일 작성 —
+  `legal_search.prompt`, `precedent_summary.prompt`, `contract_review.prompt`,
+  `education_context_exclusion.prompt`. 3순위에서 겪은 "코드와 따로 노는 문서가
+  조용히 어긋난다"는 문제가 재발하지 않도록, 각 파일 맨 위에 실제 코드와의 연결
+  상태를 명시:
+  - `education_context_exclusion.prompt`만 이미 실행 중인 코드(`hasExcludedEducationContext`,
+    `src/harness.ts`의 `excludedContexts`)를 문서화한 것 — 실제 두 소스 목록을 그대로
+    옮겨 적어 정확성 확보.
+  - `legal_search.prompt`는 실제 opt-in LLM 시스템 프롬프트
+    (`legalCitationSynthesis.service.ts`의 `SYSTEM_PROMPT`)와 같은 취지를 워크플로
+    전체 관점에서 설명한 설계 문서라고 명시.
+  - `precedent_summary.prompt`, `contract_review.prompt`는 아직 코드에서 쓰이지 않는
+    순수 설계 문서(LLM 확장이 결정될 때 사용)라고 명시.
+- **검증**: `npm test` 재실행 — 14개 파일, 102 passed + 1 skipped, 프론트엔드 빌드
+  통과(문서 파일만 추가라 회귀 없음 확인).
+
 ### 3순위 — harness 디렉토리 정리 ✅ (2026-08-01)
 
 - **조사**: `harness/policies/legal-service-policy.json`, `harness/workflows/*.json`(3개)이

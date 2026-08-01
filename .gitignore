@@ -5,3 +5,4 @@ dist
 web/node_modules
 web/dist
 .omx/
+.omc/

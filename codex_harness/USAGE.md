@@ -1,177 +1,55 @@
-# Codex 하네스 사용 기록
+# 하네스 사용 기록
 
-이 문서는 법률 MCP 하네스 프로젝트에서 `codex_harness`를 어떻게 사용했는지와 다음 작업 때 참고할 실행 절차를 정리합니다.
+이 문서는 `codex_harness`를 실제로 어떻게 썼는지와 다음 작업 때 참고할 실행
+절차를 정리합니다.
 
-## 이번에 사용한 하네스
+## 2026-08-01 — Claude Code CLI 겸용으로 확장
 
-핵심 파일:
+- **배경**: 앞으로 이 프로젝트를 Claude Code로 작업하기로 하면서, Codex CLI
+  전용으로 만들어뒀던 이 하네스를 계속 쓸 수 있는지 검토했습니다.
+- **조사 결과**: `.agents/roles/*.md`(architect/implementer/tester/reviewer/debugger
+  역할 정의), `.agents/workflows/*.md`(역할 실행 순서), `project-checklist.md`,
+  `scripts/test.sh`, `scripts/review.sh`는 전부 특정 CLI에 종속되지 않는 순수
+  마크다운/셸 스크립트였습니다. Codex 전용이었던 부분은 `scripts/agent-runner.mjs`
+  안의 `spawnSync("codex", ["exec", ...])` 호출 하나뿐이었습니다.
+- **조치**: `agent-runner.mjs`가 `claude`와 `codex` CLI를 둘 다 지원하도록 수정.
+  설치된 CLI를 자동 감지(`claude` 우선)하고 `--tool`로 명시 지정도 가능합니다.
+  Codex의 `--sandbox read-only|workspace-write`를 Claude의 `--permission-mode`로
+  매핑했습니다(read-only 역할 → `plan` 모드, 나머지 → `bypassPermissions`) —
+  단, 이 둘은 격리 수준이 다른 별개의 메커니즘이라는 점을 README에 명시해뒀습니다.
+- **검증**: `node --check`로 문법 확인, `--tool bogus`/미지원 workflow 등
+  인자 검증 경로를 실제로 실행해 에러 처리가 올바른지 확인. 실제 역할 실행
+  (`claude`/`codex` 서브프로세스를 진짜로 띄우는 것)은 이번 세션에서는 검증하지
+  않았습니다 — 다음에 실제로 `node codex_harness/scripts/agent-runner.mjs
+  review-and-refactor "..."` 를 돌려서 라이브로 확인하는 것을 권장합니다.
+- **참고**: 이미 Claude Code + oh-my-claudecode 세션 안에 있다면 이 스크립트
+  없이도 `Agent` 도구나 `/team` 스킬로 같은 역할 분업을 세션 안에서 바로 쓸 수
+  있습니다. 이 스크립트는 그런 세션이 없을 때(터미널 단발 실행, CI 등) 헤드리스로
+  같은 워크플로를 돌리는 용도입니다.
 
-- `codex_harness/project-checklist.md`
-- `codex_harness/scripts/test.sh`
-- `codex_harness/scripts/review.sh`
-- `codex_harness/reports/current-project-review.md`
-- `codex_harness/scripts/agent-runner.mjs`
+## 이전 기록 (Codex CLI, 2026-06-12)
 
-## 이번에 검증한 작업
+핵심 파일: `project-checklist.md`, `scripts/test.sh`, `scripts/review.sh`,
+`scripts/agent-runner.mjs`.
 
-### 전체 테스트 검증
+검증한 작업:
 
 ```bash
 bash codex_harness/scripts/test.sh
 ```
 
-검증 내용:
-
-- TypeScript 빌드
-- 하네스 eval
-- Vitest
-- 웹 빌드
-
-검증 결과:
-
-```text
-6 files passed
-25 tests passed
-web build passed
-```
-
-### 변경 사항 리뷰
+검증 내용: TypeScript 빌드, 하네스 eval, Vitest, 웹 빌드.
+당시 결과(2026-06-12 기준, 현재는 테스트 수가 훨씬 늘어났습니다 — 최신 수치는
+`npm test` 실행 결과 또는 `PROGRESS.md` 참고): `6 files passed`, `25 tests
+passed`, `web build passed`.
 
 ```bash
 bash codex_harness/scripts/review.sh
 ```
 
-검증 내용:
+검증 내용: `git status`, `git diff --stat`, `git diff` — 커밋 전 변경 사항 검토용.
 
-- git status
-- git diff stat
-- git diff
-
-사용 목적:
-
-- 현재 변경된 파일 확인
-- 커밋 전 diff 검토
-- 불필요한 변경 확인
-
-### 프론트엔드 lint
-
-```bash
-npm --prefix web run lint
-```
-
-결과:
-
-```text
-eslint passed
-```
-
-### korean-law provider 검증 스크립트 문법 확인
-
-```bash
-node --check scripts/verify-korean-law-provider.mjs
-```
-
-결과:
-
-```text
-passed
-```
-
-### 실제 korean-law live 호출 확인
-
-```bash
-node scripts/verify-korean-law-provider.mjs
-```
-
-현재 확인 결과:
-
-- 현재 환경에서는 외부 API `fetch failed` 발생
-- 성공 live 응답은 아직 미검증
-- 실패 경로는 서비스에서 `검색 실패`, `수동 확인 필요`로 처리하도록 보완됨
-
-## 이번에 확인한 정책 기준
-
-`codex_harness/project-checklist.md` 기준으로 다음 항목을 확인했습니다.
-
-- 학교, 교육기관, 수업 맥락 제외
-- 법률 자문이 아니라 정보 제공/초안 보조로 제한
-- 최종 판단, 승소 보장, 위법 단정 금지
-- 전문가 검토 필요 여부 표시
-- 출처 부족 시 `출처 확인 필요` 또는 `수동 확인 필요` 표시
-- API 3개 유지
-  - `POST /api/legal-research`
-  - `POST /api/contract-review`
-  - `POST /api/document-draft`
-- 프론트 UI에 결과를 카드 형태로 표시
-- 문서 생성 결과는 초안으로 표시
-
-## 이번에 하네스를 이용해 보완한 내용
-
-- 워크플로 응답에 `safetyReview` 추가
-- 워크플로 응답에 `citationVerification` 추가
-- 프론트에 “안전 검토”, “인용 검증” 표시
-- `korean-law` CLI 호출 방식 보정
-- `document_reader_mcp` 최소 명세 추가
-- YAML eval 산출물 추가
-- JSON eval 시나리오 추가
-- 현재 프로젝트 리뷰 리포트 생성
-
-## 다음번 기본 사용 절차
-
-작업 시작 전:
-
-```bash
-bash codex_harness/scripts/review.sh
-```
-
-현재 변경 상태를 확인합니다.
-
-작업 후:
-
-```bash
-bash codex_harness/scripts/test.sh
-npm --prefix web run lint
-```
-
-테스트와 프론트 lint를 확인합니다.
-
-법령 provider를 확인할 때:
-
-```bash
-node --check scripts/verify-korean-law-provider.mjs
-node scripts/verify-korean-law-provider.mjs
-```
-
-실제 live 호출은 `LAW_OC`와 외부 API 연결 상태가 필요합니다.
-
-## 역할 기반 runner 사용
-
-Codex CLI 환경에서 사용할 수 있습니다.
-
-전체 점검:
-
-```bash
-node codex_harness/scripts/agent-runner.mjs review-and-refactor "법률 MCP 하네스 전체 점검"
-```
-
-기능 추가:
-
-```bash
-node codex_harness/scripts/agent-runner.mjs implement-feature "document_reader_mcp 실제 서비스 계층 구현"
-```
-
-버그 수정:
-
-```bash
-node codex_harness/scripts/agent-runner.mjs fix-bug "교육 맥락 차단 누락 케이스 수정"
-```
-
-역할별 실행 결과는 `codex_harness/reports/`에 저장됩니다.
-
-## 다음 작업 추천
-
-1. `document_reader_mcp` 명세를 실제 서비스 코드로 구현합니다.
-2. `korean-law` live 호출 실패 원인을 확인합니다.
-3. 브라우저 기반 프론트 e2e 테스트를 추가합니다.
-4. prompt 파일을 추가합니다.
-5. 샘플 리포트, 체크리스트, 초안 outputs를 추가합니다.
+당시 실행 결과 리포트(`reports/current-project-review.md`)는 이제 크게
+outdated되어(25개 테스트 시절 기준) 제거했습니다. 리포트는 실행할 때마다
+`reports/`에 새로 쌓이는 것이 원래 용도이며, 과거 시점 스냅샷을 영구 보관할
+필요는 없다고 판단했습니다.

@@ -126,10 +126,14 @@
 - 계약서/문서 파싱 제공자
 - 파일 업로드 또는 텍스트 추출 전략
 
-추천 작업:
+결정됨 (2026-08-01): 붙여넣은 텍스트부터 지원. 파일 업로드/파싱/보안 검토가 필요한
+PDF·DOCX는 별도 규모의 작업이라 필요해지면 나중에 확장.
 
-- 먼저 mock `document_reader_mcp` adapter 명세를 추가합니다.
-- 지원 입력을 정해야 합니다: 붙여넣은 텍스트, PDF, DOCX, 업로드 파일 경로.
+다음 작업:
+
+- 지금은 계약서 검토·문서 초안 입력이 이미 `contractText`/`facts` 같은 일반 텍스트
+  필드로 들어오고 있어 별도 어댑터 없이도 이 결정이 충족된 상태. 실제
+  `document_reader_mcp` 모듈이 필요해지는 시점은 PDF/DOCX 지원을 시작할 때(미착수).
 
 ### `/legal-harness/agents/*.py`
 
@@ -150,40 +154,31 @@
 - `legal_summarizer.py`
   - 독립 모듈로는 아직 구현되지 않았습니다.
 
-결정 필요:
+결정됨 (2026-08-01): TypeScript agent로 진행. 새 런타임/프로세스 간 통신 복잡도를
+추가할 이유가 없다고 판단.
 
-- 초기 구상처럼 Python agent를 추가할지
-- 현재 TypeScript 서비스/워크플로 구조를 유지하고 TypeScript agent를 추가할지
+다음 작업:
 
-추천 작업:
-
-- 현재 백엔드가 TypeScript이므로 우선 TypeScript agent를 권장합니다.
-- 역할 분리가 실제로 필요해질 때 `src/agents/`를 추가합니다.
-- 명확한 오케스트레이션 요구가 없다면 Python 런타임 복잡도는 추가하지 않습니다.
+- 역할 분리가 실제로 필요해질 때 `src/agents/`를 추가합니다(지금은 아직 그 시점이
+  아니라고 판단, 미착수).
+- 명확한 오케스트레이션 요구가 없다면 Python 런타임은 도입하지 않습니다.
 
 ### `/legal-harness/prompts/*.prompt`
 
-상태: 없음.
+상태: 완료 (2026-08-01).
 
 현재 대응 구조:
 
-- prompt 파일은 아직 없습니다.
-- `src/prompts/` 폴더는 있으나 비어 있습니다.
-
-빠진 항목:
-
-- `legal_search.prompt`
-- `precedent_summary.prompt`
-- `contract_review.prompt`
-
-특이 사항:
-
-- `school_policy_review.prompt`는 현재 제품 범위와 충돌합니다. 학교, 교육기관, 수업 맥락은 제외 대상입니다.
-
-추천 작업:
-
-- 교육 맥락이 아닌 prompt 3개를 추가합니다.
-- `school_policy_review.prompt`는 추가하지 않거나, `education_context_exclusion.prompt`처럼 차단 정책용 prompt로 대체합니다.
+- `legal-harness/prompts/legal_search.prompt`, `precedent_summary.prompt`,
+  `contract_review.prompt`, `education_context_exclusion.prompt` 4개 파일 작성 완료.
+- `school_policy_review.prompt`는 만들지 않고 `education_context_exclusion.prompt`로
+  대체(결정 사유는 위 "사용자 결정 사항" 참고).
+- 각 파일 상단에 실제 코드와의 연결 상태(이미 연결/부분 연결/미연결)와 진짜 소스가
+  어디인지 명시해, `harness/policies`·`harness/workflows` JSON처럼 코드와 조용히
+  어긋나는 문제가 재발하지 않도록 함. `education_context_exclusion.prompt`만 이미
+  실행 중인 코드(`hasExcludedEducationContext`)를 문서화한 것이고, 나머지 3개는
+  아직 코드에서 읽지 않는 설계 문서(LLM 확장 결정 시 사용).
+- `src/prompts/` 폴더는 여전히 비어 있음(런타임에서 읽는 코드가 없어 그대로 둠).
 
 ### `/legal-harness/evals/*.yaml`
 
@@ -216,9 +211,10 @@ YAML 기대값과 실제 응답 간 불일치 3건과 수정 내역 포함).
 - 저장된 리포트 예시
 - 리포트 템플릿 형식
 
-추천 작업:
-
-- `/legal-harness/outputs/reports` 아래 샘플 리포트 산출물을 추가합니다.
+완료 (2026-08-01): 정적 예시만 둔다 — 백엔드는 계속 무상태(stateless)로 유지하고
+실제 파일 저장 기능은 추가하지 않음. `legal-research-report-example.json`,
+`contract-review-report-example.json` 작성 완료 — 손으로 지어낸 내용이 아니라
+실제 워크플로 함수를 직접 호출해 캡처한 진짜 응답을 그대로 저장.
 
 ### `/legal-harness/outputs/checklists`
 
@@ -233,9 +229,10 @@ YAML 기대값과 실제 응답 간 불일치 3건과 수정 내역 포함).
 - 저장된 체크리스트 예시
 - 체크리스트 템플릿 형식
 
-추천 작업:
-
-- 법률 리서치, 계약서 검토, 문서 초안 흐름별 체크리스트 예시를 추가합니다.
+완료 (2026-08-01): 정적 예시만 둔다(위 "outputs/reports" 결정과 동일).
+`legal-research-checklist-example.md`, `contract-review-checklist-example.md`,
+`document-draft-checklist-example.md` 작성 완료 — 실제 API 응답의 `nextSteps`/
+`policy.warnings` 필드를 그대로 옮김.
 
 ### `/legal-harness/outputs/drafts`
 
@@ -250,9 +247,10 @@ YAML 기대값과 실제 응답 간 불일치 3건과 수정 내역 포함).
 - 저장된 초안 예시
 - 초안 출력 템플릿 형식
 
-추천 작업:
-
-- 초안 예시를 추가하고 모든 생성 문서는 초안 전용임을 명확히 표시합니다.
+완료 (2026-08-01): 정적 예시만 둔다(위 "outputs/reports" 결정과 동일).
+`document-draft-example.md` 작성 완료 — 실제 `mockResult.sections`/`placeholders`
+구조를 사람이 읽는 문서 형태로 채워 넣되, 확인되지 않은 정보(정확한 금액, 작성일,
+첨부자료)는 지어내지 않고 자리표시자로 남김. 상단에 초안 전용 경고 문구 명시.
 
 ## 추천 다음 작업 계획
 
@@ -276,9 +274,7 @@ legal-harness/
 - 현재 동작하는 TypeScript 앱은 유지합니다.
 - 초기 하네스 산출물 구조를 런타임 코드와 충돌 없이 추가합니다.
 
-### 2단계: prompt 파일 추가
-
-생성 대상:
+### 2단계: prompt 파일 추가 — 완료 (2026-08-01)
 
 ```text
 legal-harness/prompts/legal_search.prompt
@@ -287,7 +283,7 @@ legal-harness/prompts/contract_review.prompt
 legal-harness/prompts/education_context_exclusion.prompt
 ```
 
-제품 범위가 바뀌기 전까지 학교 관련 검토 행위는 추가하지 않습니다.
+`school_policy_review.prompt`는 만들지 않았습니다(제품 범위 제외 대상).
 
 ### 3단계: YAML 평가 명세 추가
 
@@ -303,35 +299,35 @@ legal-harness/evals/outdated_law_tests.yaml
 
 - 인용, 환각 방지, 최신 법령 확인 기준을 명확히 합니다.
 
-### 4단계: 산출물 예시 추가
-
-생성 위치:
+### 4단계: 산출물 예시 추가 — 완료 (2026-08-01)
 
 ```text
-legal-harness/outputs/reports
-legal-harness/outputs/checklists
-legal-harness/outputs/drafts
+legal-harness/outputs/reports/legal-research-report-example.json
+legal-harness/outputs/reports/contract-review-report-example.json
+legal-harness/outputs/checklists/legal-research-checklist-example.md
+legal-harness/outputs/checklists/contract-review-checklist-example.md
+legal-harness/outputs/checklists/document-draft-checklist-example.md
+legal-harness/outputs/drafts/document-draft-example.md
 ```
 
-목적:
+전부 실제 워크플로 함수를 직접 호출해 캡처한 진짜 응답 기반(손으로 지어낸 예시
+아님). 백엔드가 이 파일들을 생성/저장하지는 않습니다 — 정적 예시로만 존재.
 
-- 리포트, 체크리스트, 초안 형식의 기대 결과를 구체화합니다.
+### 5단계: agent 구조 결정 — 완료 (2026-08-01)
 
-### 5단계: agent 구조 결정
+TypeScript agent로 결정. `src/agents/`는 역할 분리가 실제로 필요해지는 시점에 추가(미착수).
 
-결정 사항:
+## 사용자 결정 사항 — 전부 결정 완료 (2026-08-01)
 
-- `src/agents` 아래 TypeScript agent를 둘지
-- `legal-harness/agents` 아래 Python agent를 둘지
+1. ✅ 현재 `src/` 런타임 구조를 유지한 채 `/legal-harness`를 evals·MCP 문서용 보조
+   계층으로 둔다. (`README.md`의 "저장소 구조" 절 참고)
+2. ✅ agent는 TypeScript로 만든다. 실제 구현은 역할 분리가 필요해질 때(미착수).
+3. ✅ `document_reader_mcp`는 붙여넣은 텍스트부터 지원한다. PDF/DOCX는 별도 작업으로
+   미룬다(미착수).
+4. ✅ `school_policy_review.prompt`는 만들지 않고 `education_context_exclusion.prompt`로
+   대체한다(파일 작성은 미착수, 2단계 참고).
+5. ✅ sample output은 정적 예시만 둔다. 백엔드에 파일 저장 기능은 추가하지 않는다
+   (예시 파일 작성은 미착수, 4단계 참고).
 
-추천:
-
-- Python을 도입해야 하는 명확한 이유가 생기기 전까지 TypeScript agent를 사용합니다.
-
-## 사용자 결정 필요 사항
-
-1. 현재 `src/` 런타임 구조를 유지한 채 `/legal-harness` 산출물 폴더를 추가할까요?
-2. agent는 TypeScript로 만들까요, Python으로 만들까요?
-3. `document_reader_mcp`는 붙여넣은 텍스트부터 지원할까요, PDF/DOCX까지 지원할까요?
-4. `school_policy_review.prompt`는 완전히 제외할까요, 교육 맥락 차단 prompt로 대체할까요?
-5. sample output은 정적 예시만 둘까요, 백엔드가 리포트/체크리스트/초안을 파일로 저장하게 할까요?
+결정은 끝났지만 실제 산출물(prompt 4개, outputs 예시)은 아직 작성되지 않았습니다 —
+착수 여부는 별도로 판단.

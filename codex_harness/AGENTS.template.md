@@ -2,7 +2,9 @@
 
 ## Purpose
 
-This project uses Codex CLI with a lightweight multi-agent harness.
+This project uses a lightweight multi-agent harness (`codex_harness/`) that runs
+with either the Codex CLI or the Claude Code CLI — see
+`codex_harness/README.md` for how `agent-runner.mjs` picks the CLI.
 
 ## Roles
 

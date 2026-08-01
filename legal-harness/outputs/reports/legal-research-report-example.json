@@ -1,0 +1,104 @@
+{
+  "_meta": {
+    "description": "legal_research 워크플로가 실제로 반환하는 리포트의 정적 예시입니다.",
+    "generatedFrom": "POST /api/legal-research",
+    "generatedAt": "2026-08-01",
+    "provider": "mock (LEGAL_PROVIDER 미설정 시 기본값)",
+    "requestBody": {
+      "question": "프리랜서 용역대금을 지급받지 못한 경우 검토할 수 있는 민사 조치를 알려주세요."
+    },
+    "note": "실제 워크플로 함수를 직접 호출해 캡처한 진짜 응답입니다(손으로 작성한 예시 아님). 백엔드는 이 응답을 파일로 저장하지 않습니다 — 이 파일은 정적 예시일 뿐입니다(todolist.md \"사용자 결정 사항\" #5 참고). korean-law provider를 쓰면 authoritySearch 내용이 실제 법령 검색 결과로 바뀝니다."
+  },
+  "response": {
+    "allowed": true,
+    "workflow": "legal_research",
+    "summary": "법률 리서치 요청이 접수되었습니다. 개발용 모의 검색 결과를 기준으로 정보 제공 리포트를 생성합니다.",
+    "nextSteps": [
+      "관련 법령과 판례 후보를 확인합니다.",
+      "확인된 출처와 추론 내용을 구분합니다.",
+      "누락된 사실관계, 기한, 관할 쟁점을 표시합니다."
+    ],
+    "mockResult": {
+      "issue": "프리랜서 용역대금을 지급받지 못한 경우 검토할 수 있는 민사 조치를 알려주세요.",
+      "likelySources": [
+        "계약상 채무불이행 검토",
+        "민사 청구 절차 검토",
+        "대금 지급 관련 판례 검색"
+      ],
+      "limitations": [
+        "현재 결과는 개발용 모의 검색을 포함할 수 있으며 실제 법령 원문 확인이 필요합니다.",
+        "이 결과는 법률 정보 제공용이며 최종 법률 판단을 대체하지 않습니다."
+      ]
+    },
+    "authoritySearch": {
+      "provider": "mock",
+      "lawSearch": {
+        "ok": true,
+        "provider": "mock",
+        "operation": "searchLaw",
+        "data": {
+          "query": "프리랜서 용역대금을 지급받지 못한 경우 검토할 수 있는 민사 조치를 알려주세요.",
+          "results": [
+            { "lawName": "민법", "articleNo": "제390조", "title": "채무불이행과 손해배상" },
+            { "lawName": "민법", "articleNo": "제750조", "title": "불법행위의 내용" }
+          ]
+        },
+        "message": "개발용 모의 검색 결과",
+        "notices": ["개발용 모의 검색 제공자 결과입니다.", "실제 법령 및 판례는 수동 확인 필요"],
+        "manualReviewRequired": true
+      },
+      "precedentSearch": {
+        "ok": true,
+        "provider": "mock",
+        "operation": "searchPrecedents",
+        "data": {
+          "query": "프리랜서 용역대금을 지급받지 못한 경우 검토할 수 있는 민사 조치를 알려주세요.",
+          "results": [
+            { "court": "대법원", "topic": "계약상 채무불이행 및 손해배상 관련 판례 검색 필요" }
+          ]
+        },
+        "message": "개발용 모의 검색 결과",
+        "notices": ["개발용 모의 검색 제공자 결과입니다.", "실제 법령 및 판례는 수동 확인 필요"],
+        "manualReviewRequired": true
+      },
+      "notices": ["개발용 모의 검색 제공자 결과입니다.", "실제 법령 및 판례는 수동 확인 필요"],
+      "manualReviewRequired": true
+    },
+    "safetyReview": {
+      "changed": false,
+      "expertReviewRequired": false,
+      "detections": []
+    },
+    "citationVerification": {
+      "sourceSufficiency": "partial",
+      "limitations": ["출처 확인 필요"],
+      "blocksDefinitiveAnalysis": true,
+      "missingFields": {
+        "legalAuthorities": [],
+        "caseAuthorities": ["caseAuthorities[0].caseNumber_or_decisionDate"]
+      }
+    },
+    "llmSynthesis": {
+      "used": false,
+      "notice": "ANTHROPIC_API_KEY가 설정되지 않아 규칙 기반 결과만 제공합니다."
+    },
+    "policy": {
+      "informationalOnly": true,
+      "draftOnly": false,
+      "prohibitsFinalJudgment": true,
+      "prohibitsGuaranteedOutcome": true,
+      "prohibitsDefinitiveIllegalityFinding": true,
+      "requiresExpertReview": true,
+      "disclaimers": [
+        "이 응답은 법률 정보 제공 및 문서 초안 작성 보조이며, 변호사 등 전문가의 자문을 대체하지 않습니다.",
+        "기한, 관할, 사실관계, 최신 법령은 사용 전에 반드시 확인해야 합니다."
+      ],
+      "warnings": [
+        "이 결과는 최종 법률 판단, 승소 보장, 위법 단정으로 사용할 수 없습니다.",
+        "신청, 협상, 소송 전략에 활용하기 전 전문가 검토가 필요합니다.",
+        "출처 확인 필요",
+        "근거가 부족한 단정적 분석은 제한됩니다."
+      ]
+    }
+  }
+}
